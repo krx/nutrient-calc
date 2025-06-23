@@ -1,0 +1,7 @@
+services:
+  nutrient-calc:
+    build: .
+    container_name: nutrient-calc
+    restart: unless-stopped
+    ports:
+      - 8080:8080
