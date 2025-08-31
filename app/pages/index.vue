@@ -69,8 +69,9 @@ function compute_nutrients(value_label = false) {
 function compute_micros() {
   const micros = defaultdict(0.0);
   const names = {};
+  let total = 0.0;
   compute_nutrients().forEach((n) => {
-    console.log(n);
+    total += n.value;
     all_nutrients
       .find((v) => v.name === n.name)
       ?.nutrients.forEach((micro) => {
@@ -87,7 +88,7 @@ function compute_micros() {
         formatter: "{b}",
       },
       tooltip: {
-        formatter: `${names[m]}: <b>${_.round(micros[m] * 1000, 2)}mg</b>`,
+        formatter: `${names[m]}: <b>${_.round(micros[m] * 1000, 2)}mg (${_.round(micros[m] / total * 100.0, 2)}%)</b>`,
       },
     };
   });
