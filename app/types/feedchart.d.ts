@@ -1,10 +1,10 @@
-export type VolUnit = "mL" | "L" | "fl oz" | "gal"
-export type NutrientUnit = "mL" | "g"
+export type VolUnit = "mL" | "L" | "fl oz" | "gal";
+export type NutrientUnit = "mL" | "g";
 
 export interface Nutrient {
-  name: string,
-  unit: NutrientUnit,
-  color: string
+  name: string;
+  unit: NutrientUnit;
+  color: string;
 }
 
 export interface GrowthStage {
@@ -20,7 +20,7 @@ export interface FeedChart {
 }
 
 export interface Chart {
-  name: string,
-  nutrients: Nutrient[],
-  charts: FeedChart
+  name: string;
+  nutrients: Nutrient[];
+  charts: FeedChart;
 }

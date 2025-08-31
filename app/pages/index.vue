@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import type { Chart, GrowthStage, VolUnit } from '@/types/feedchart';
-import { PieChart } from 'echarts/charts';
-import { LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
-import { use } from 'echarts/core';
-import { CanvasRenderer } from 'echarts/renderers';
-import _ from 'lodash';
+import type { Chart, GrowthStage, VolUnit } from "@/types/feedchart";
+import type { NutrientTable } from "@/types/nutrients";
+import { PieChart } from "echarts/charts";
+import { LegendComponent, TitleComponent, TooltipComponent } from "echarts/components";
+import { use } from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+import _ from "lodash";
 import VChart, { THEME_KEY } from "vue-echarts";
+import defaultdict from "defaultdict-proxy";
 
-use([
-  CanvasRenderer,
-  PieChart,
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent
-]);
+use([CanvasRenderer, PieChart, TitleComponent, TooltipComponent, LegendComponent]);
 
-provide(THEME_KEY, 'dark');
+provide(THEME_KEY, "dark");
 
-const all_charts: {[key: string]: Chart} = [
-  await import('@/assets/maxiseries_indoor.json') as Chart,
-  await import('@/assets/maxiseries_outdoor.json') as Chart,
-  await import('@/assets/floraseries.json') as Chart
-].reduce((obj, c) => ({...obj, [c.name]: c}), {});
+const all_charts: { [key: string]: Chart } = [
+  (await import("@/assets/floranova.json")) as Chart,
+  (await import("@/assets/maxiseries_indoor.json")) as Chart,
+  (await import("@/assets/maxiseries_outdoor.json")) as Chart,
+  (await import("@/assets/floraseries.json")) as Chart,
+].reduce((obj, c) => ({ ...obj, [c.name]: c }), {});
+
+const all_nutrients: NutrientTable = (await import("@/assets/nutrients.json"))
+  .default as NutrientTable;
 
 const chart = ref<string>(Object.keys(all_charts)[0]!);
 const schedule = ref(default_schedule());
 const stage = ref(default_stage());
 
-function default_schedule() : string {
-  return Object.keys(all_charts[chart.value]!.charts)[0]!
+function default_schedule(): string {
+  return Object.keys(all_charts[chart.value]!.charts)[0]!;
 }
 
-function default_stage() : string {
+function default_stage(): string {
   return Object.keys(all_charts[chart.value]!.charts[schedule.value]!)[0]!;
 }
 
 const target_amount = ref(1.0);
-const target_unit = ref<VolUnit>('gal');
-const units = ref<VolUnit[]>(['mL', 'L', 'fl oz', 'gal']);
+const target_unit = ref<VolUnit>("gal");
+const units = ref<VolUnit[]>(["mL", "L", "fl oz", "gal"]);
 
-function compute_nutrients(value_label=false) {
+function compute_nutrients(value_label = false) {
   const ch: Chart = all_charts[chart.value]!;
   const gs: GrowthStage = ch.charts[schedule.value]![stage.value]!;
   const target_gal = to_gal(target_amount.value, target_unit.value);
@@ -55,56 +55,96 @@ function compute_nutrients(value_label=false) {
           color: n.color,
         },
         label: {
-          formatter: value_label ? `{c} ${n.unit}` : '{b}'
+          formatter: value_label ? `{c} ${n.unit}` : "{b}",
         },
         tooltip: {
-          valueFormatter: (val: number) => `${val} ${n.unit}`
-        }
-      }
-      );
+          valueFormatter: (val: number) => `${val} ${n.unit}`,
+        },
+      });
     }
   });
-  return res
+  return res;
+}
+
+function compute_micros() {
+  const micros = defaultdict(0.0);
+  const names = {};
+  compute_nutrients().forEach((n) => {
+    console.log(n);
+    all_nutrients
+      .find((v) => v.name === n.name)
+      ?.nutrients.forEach((micro) => {
+        micros[micro.abbr] += n.value * micro.pcnt;
+        names[micro.abbr] = micro.name;
+      });
+  });
+
+  return Object.keys(micros).map((m) => {
+    return {
+      name: m,
+      value: micros[m],
+      label: {
+        formatter: "{b}",
+      },
+      tooltip: {
+        formatter: `${names[m]}: <b>${_.round(micros[m] * 1000, 2)}mg</b>`,
+      },
+    };
+  });
 }
 
 const option = ref({
-  backgroundColor: 'transparent',
+  backgroundColor: "transparent",
+  title: {
+    text: "Amounts to Mix",
+    left: "center",
+  },
   tooltip: {
-    trigger: 'item'
+    trigger: "item",
   },
   legend: {
-    orient: 'horizontal',
-    left: 'center',
+    orient: "horizontal",
+    left: "center",
+    top: "bottom",
   },
   series: [
-    // {
-    //   type: "pie",
-    //   radius: ['25%', '60%'],
-    //   minShowLabelAngle: 0.1,
-    //   data: computed(() => compute_nutrients()),
-    //   label: {
-    //     // overflow: 'break',
-    //     // alignTo: 'edge',
-    //     // edgeDistance: 0,
-    //     bleedMargin: 50,
-    //
-    //   }
-    // },
     {
-      type: 'pie',
-      radius: ['40%', '90%'],
+      type: "pie",
+      radius: ["40%", "90%"],
       data: computed(() => compute_nutrients(true)),
       label: {
         show: true,
-        position: 'inside',
+        position: "inside",
         fontSize: 17,
-        fontWeight: 'bold'
+        fontWeight: "bold",
       },
-
-    }
-  ]
+    },
+  ],
 });
 
+const option_micros = ref({
+  backgroundColor: "transparent",
+  title: {
+    text: "Nutrient Analysis",
+    left: "center",
+  },
+  tooltip: {
+    trigger: "item",
+  },
+  legend: {
+    orient: "horizontal",
+    type: "scroll",
+    left: "center",
+    top: "bottom",
+  },
+  series: [
+    {
+      type: "pie",
+      radius: "75%",
+      data: computed(() => compute_micros()),
+    },
+  ],
+});
 </script>
 
 <template>
@@ -168,6 +208,11 @@ const option = ref({
       <UCard variant="subtle">
         <UContainer class="flex flex-col gap-2 items-center justify-center h-128">
           <v-chart :option="option" />
+        </UContainer>
+      </UCard>
+      <UCard variant="subtle">
+        <UContainer class="flex flex-col gap-2 items-center justify-center h-128">
+          <v-chart :option="option_micros" />
         </UContainer>
       </UCard>
     </div>
